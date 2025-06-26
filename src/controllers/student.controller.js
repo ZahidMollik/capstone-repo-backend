@@ -200,60 +200,204 @@ const getTeamById = async (req, res) => {
   }
 };
 
+// const updateTeamMember = async (req, res) => {
+//   try {
+//     const { teamName, educationalMail } = req.params;
+//     const updatedData = req.body;
+//     if (!teamName || !educationalMail || !updatedData) {
+//       return res.status(StatusCodes.BAD_REQUEST).json({
+//         status: false,
+//         message: 'Missing teamName, educationalMail, or updatedData.',
+//       });
+//     }
+
+//     if (updatedData.educationalMail && updatedData.educationalMail !== educationalMail) {
+//       const exists = await Team.findOne({
+//         'members.educationalMail': updatedData.educationalMail,
+//       });
+
+//       if (exists) {
+//         return res.status(StatusCodes.BAD_REQUEST).json({
+//           status: false,
+//           message: `Educational mail "${updatedData.educationalMail}" already exists.`,
+//         });
+//       }
+//     }
+//     const updateFields = {};
+//     for (const key in updatedData) {
+//       updateFields[`members.$.${key}`] = updatedData[key];
+//     }
+
+//     const result = await Team.updateOne(
+//       { teamName, 'members.educationalMail': educationalMail },
+//       { $set: updateFields }
+//     );
+
+//     if (result.matchedCount === 0) {
+//       return res.status(StatusCodes.NOT_FOUND).json({
+//         status: false,
+//         message: 'Member or Team not found.',
+//       });
+//     }
+
+//     return res.status(StatusCodes.OK).json({
+//       status: true,
+//       message: 'Member updated successfully.',
+//     });
+//   } catch (error) {
+//     console.error('Error updating member:', error);
+//     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+//       status: false,
+//       message: 'Something went wrong.',
+//       error: error.message,
+//     });
+//   }
+// };
+
 const updateTeamMember = async (req, res) => {
   try {
-    const { teamName, educationalMail } = req.params;
-    const updatedData = req.body;
-    if (!teamName || !educationalMail || !updatedData) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
+    const { id } = req.params;
+    const { teamName, members } = req.body;
+
+    // Check if team exists
+    const existingTeam = await Team.findById(id);
+    if (!existingTeam) {
+      return res.status(StatusCodes.NOT_FOUND).json({
         status: false,
-        message: 'Missing teamName, educationalMail, or updatedData.',
+        message: 'Team not found.',
       });
     }
 
-    if (updatedData.educationalMail && updatedData.educationalMail !== educationalMail) {
-      const exists = await Team.findOne({
-        'members.educationalMail': updatedData.educationalMail,
-      });
-
-      if (exists) {
+    // Validate team name if provided
+    if (teamName) {
+      if (typeof teamName !== 'string' || teamName.trim() === '') {
         return res.status(StatusCodes.BAD_REQUEST).json({
           status: false,
-          message: `Educational mail "${updatedData.educationalMail}" already exists.`,
+          message: 'Team name must be a non-empty string.',
+        });
+      }
+
+      if (teamName !== existingTeam.teamName) {
+        const nameConflict = await Team.findOne({ teamName });
+        if (nameConflict) {
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            status: false,
+            message: 'A team with this name already exists.',
+          });
+        }
+      }
+    }
+
+    // If members are provided, validate them
+    let updatedMembers = existingTeam.members; // Start with current members
+
+    if (Array.isArray(members)) {
+      // if (members.length !== 5) {
+      //   return res.status(StatusCodes.BAD_REQUEST).json({
+      //     status: false,
+      //     message: 'A team must have exactly 5 members.',
+      //   });
+      // }
+
+      const emails = members.map((m) => m.educationalMail).filter(Boolean);
+      const emailSet = new Set(emails);
+      if (emailSet.size !== emails.length) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          status: false,
+          message: 'Each member must have a unique educationalMail within the team.',
+        });
+      }
+
+      for (let i = 0; i < members.length; i++) {
+        const memberUpdate = members[i];
+        const existingMember = existingTeam.members[i] || {}; // Fallback to empty
+
+        // Merge with existing member data
+        const mergedMember = { ...existingMember.toObject(), ...memberUpdate };
+
+        // Minimal required field validation only if fields are present
+        const requiredFields = ['username', 'intake', 'section', 'department', 'educationalMail', 'phone'];
+        for (const field of requiredFields) {
+          if (field in memberUpdate && (typeof memberUpdate[field] !== 'string' || memberUpdate[field].trim() === '')) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+              status: false,
+              message: `Member ${i + 1}: field "${field}" must be a non-empty string if provided.`,
+            });
+          }
+        }
+
+        // Validate educationalMail and department match
+        if (mergedMember.educationalMail && mergedMember.department) {
+          const email = mergedMember.educationalMail.toLowerCase().trim();
+          const dept = mergedMember.department.toLowerCase().trim();
+          const subdomainMatch = email.match(/^.+@([a-z]+)\.bubt\.edu\.bd$/);
+
+          if (subdomainMatch && subdomainMatch[1] !== dept) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+              status: false,
+              message: `Member ${i + 1}: department "${dept}" does not match educationalMail domain "${subdomainMatch[1]}"`,
+            });
+          }
+        }
+
+        updatedMembers[i] = mergedMember;
+      }
+
+      // Check if any member is already in another team
+      const updatedEmails = updatedMembers.map((m) => m.educationalMail);
+      const conflicts = await Team.find({
+        _id: { $ne: id },
+        'members.educationalMail': { $in: updatedEmails },
+      });
+
+      if (conflicts.length > 0) {
+        const usedEmails = [];
+        conflicts.forEach((team) => {
+          team.members.forEach((member) => {
+            if (updatedEmails.includes(member.educationalMail)) {
+              usedEmails.push(member.educationalMail);
+            }
+          });
+        });
+
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          status: false,
+          message: `The following member(s) are already part of another team: ${[...new Set(usedEmails)].join(', ')}`,
         });
       }
     }
-    const updateFields = {};
-    for (const key in updatedData) {
-      updateFields[`members.$.${key}`] = updatedData[key];
-    }
 
-    const result = await Team.updateOne(
-      { teamName, 'members.educationalMail': educationalMail },
-      { $set: updateFields }
+    // Final update
+    const updatedTeam = await Team.findByIdAndUpdate(
+      id,
+      {
+        ...(teamName && { teamName }),
+        ...(members && { members: updatedMembers }),
+      },
+      { new: true, runValidators: true }
     );
-
-    if (result.matchedCount === 0) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        status: false,
-        message: 'Member or Team not found.',
-      });
-    }
 
     return res.status(StatusCodes.OK).json({
       status: true,
-      message: 'Member updated successfully.',
+      message: 'Team updated successfully.',
+      data: updatedTeam,
     });
   } catch (error) {
-    console.error('Error updating member:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        status: false,
+        message: messages,
+      });
+    }
+
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       status: false,
-      message: 'Something went wrong.',
+      message: 'Something went wrong while updating the team.',
       error: error.message,
     });
   }
 };
-
 const deleteTeam = async (req, res) => {
   try {
     const deletedTeam = await Team.findByIdAndDelete(req.params.id);

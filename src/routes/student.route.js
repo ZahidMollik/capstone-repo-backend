@@ -10,7 +10,7 @@ router.get("/team/:id", studentController.getTeamById);
 router.get("/team/myteam/:educationalmail", studentController.getTeamsByEducationalMail);
 router.patch("/team/name:id", studentController.updateTeamName);
 router.patch("/team/assign-teacher", studentController.updateTeam);
-router.put("/team/:teamName/:educationalMail", studentController.updateTeamMember);
+router.put("/team/:id", studentController.updateTeamMember);
 router.delete("/team/:id", studentController.deleteTeam);
 
 export default router;
