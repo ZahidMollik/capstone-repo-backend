@@ -10,7 +10,7 @@ const submittedFileSchema = Schema({
     required: true,
   },
   downloadurl: {
-    type: [String],
+    type: String,
     required: true, 
   },
   teamId: {
