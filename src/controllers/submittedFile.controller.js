@@ -4,12 +4,12 @@ import Teacher from '../models/teacher.model.js';
 
 export const createFile = async (req, res) => {
   try {
-    const { projectName,filename, downloadurl, teamId, intake,teacherId} = req.body;
+    const { projectName,filename, downloadurl, teamName, intake,teacherId} = req.body;
 
-    if (!filename || !downloadurl || !teamName || !intake || !teacherId) {
+    if ( !projectName ||!filename || !downloadurl || !teamName || !intake || !teacherId) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         status: false,
-        message: 'filename, downloadurl, teamName,intake and teacherId are required.',
+        message: 'projectName,filename, downloadurl, teamName,intake and teacherId are required.',
       });
     }
 

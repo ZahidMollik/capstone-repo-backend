@@ -1,6 +1,10 @@
 import { Schema, model } from "mongoose";
 
 const submittedFileSchema = Schema({
+  projectName:{
+    type: String,
+    required: true,
+  },
   filename: {
     type: String,
     required: true,
