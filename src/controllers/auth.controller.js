@@ -98,7 +98,7 @@ const loginUser=async(req,res)=>{
       email:userByemail.email,
       role:userByemail.role
     }
-    const expiresIn = rememberMe ? "7d" : "1h";
+    const expiresIn = rememberMe ? "7d" : "4h";
     const token=jwt.sign(payload,process.env.SECRET_KEY,{expiresIn});
     
     res.status(StatusCodes.CREATED)
