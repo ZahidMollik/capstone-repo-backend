@@ -6,10 +6,10 @@ export const createFile = async (req, res) => {
   try {
     const { projectName,filename, downloadurl, teamId, intake,teacherId} = req.body;
 
-    if (!projectName || !filename || !downloadurl || !teamId || !intake || !teacherId) {
+    if (!filename || !downloadurl || !teamName || !intake || !teacherId) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         status: false,
-        message: 'projectName, filename, downloadurl, teamId,intake and teacherId are required.',
+        message: 'filename, downloadurl, teamName,intake and teacherId are required.',
       });
     }
 
@@ -17,7 +17,7 @@ export const createFile = async (req, res) => {
       projectName,
       filename,
       downloadurl,
-      teamId,
+      teamName,
       intake,
       teacherId,
       

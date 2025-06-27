@@ -1,10 +1,6 @@
 import { Schema, model } from "mongoose";
 
 const submittedFileSchema = Schema({
-  projectName:{
-    type:String,
-    required:true
-  },
   filename: {
     type: String,
     required: true,
@@ -13,8 +9,8 @@ const submittedFileSchema = Schema({
     type: String,
     required: true, 
   },
-  teamId: {
-    type: Schema.Types.ObjectId,
+  teamName: {
+    type: String,
     ref: 'Team',
     required: true,
   },
