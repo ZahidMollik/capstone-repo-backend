@@ -143,3 +143,34 @@ export const declineSubmission = async (req, res) => {
   }
 };
 
+export const getPublicDownloadUrlsByProjectName = async (req, res) => {
+  try {
+    const { projectName } = req.params;
+    if (!projectName) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        status: false,
+        message: 'projectName query parameter is required.',
+      });
+    }
+
+    const downloads = await SubmittedFile.find(
+      {
+        projectName,
+        isPublic:true
+      },
+      'downloadurl' 
+    );
+
+    res.status(StatusCodes.OK).json({
+      status: true,
+      data: downloads,
+    });
+  } catch (error) {
+    console.error('Error fetching public download URLs by project name:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      status: false,
+      message: 'Could not fetch public download URLs for the project.',
+      error: error.message,
+    });
+  }
+};
