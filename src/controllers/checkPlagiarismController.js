@@ -23,25 +23,21 @@ export const checkPlagiarismController = async (req, res) => {
 
     const matchPercent = (matched / lines.length) * 100;
 
-    if (matchPercent >= 30) {
-      fs.unlinkSync(filePath);
-      return res.status(409).json({
-        matchPercent,
-        message: 'Plagiarism detected. File not stored.'
-      });
-    }
-
-    const docsToInsert = lines.map(line => ({
+    if (matchPercent <= 30) {
+      const docsToInsert = lines.map(line => ({
       filename: req.file.originalname,
       content: line
-    }));
+      }));
 
-    await DocumentLine.insertMany(docsToInsert);
+      await DocumentLine.insertMany(docsToInsert);
+    }
+
+    
     fs.unlinkSync(filePath);
 
     res.status(200).json({
       matchPercent,
-      message: 'File uploaded and stored successfully.'
+      message: 'Plagarism checked'
     });
 
   } catch (err) {
